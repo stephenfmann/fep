@@ -2,6 +2,7 @@
 
 import numpy as np
 from scipy.integrate import quad #integrate over continuous distribution
+from scipy.stats import entropy
 import logging # error reporting
 
 
@@ -55,15 +56,19 @@ def vfe_discrete(
     ## 2. Value of x selects a column of p(w,x)
     p_col = p[:,x]
     
-    ## 3. Calculate the "energy"
-    if units=='n':      energy = np.sum(q * np.log(1/p_col)) # element-wise multiplication
-    if units=='b':    energy = np.sum(q * np.log2(1/p_col)) # element-wise multiplication
+    ## 3. Calculate the "energy" in nats
+    energy = np.sum(q * np.log(1/p_col)) # element-wise multiplication
+    
+    ## 3b. If required, convert to bits
+    if units=='b': energy /= np.log(2)
     
     if debug: logging.info("Energy: "+str(energy))
     
-    ## 4. Calculate the entropy of q
-    if units=='n':      entropy = np.sum(q * np.log(1/q)) # element-wise multiplication
-    if units=='b':    entropy = np.sum(q * np.log2(1/q)) # element-wise multiplication
+    ## 4. Calculate the entropy of q in nats
+    entropy = np.sum(q * np.log(1/q)) # element-wise multiplication
+    
+    ## 4b. If required, convert to bits
+    if units=='b': entropy /= np.log(2)
     
     if debug: logging.info("Entropy: "+str(entropy))
     
@@ -262,7 +267,50 @@ def vfe_cont_2(
 """
     kld_cont()
     Relative entropy (i.e. Kullback-Leibler divergence)
-     from Q to P.
+     from Q to P for continuous distributions.
+    Note that the order in which the distributions are supplied
+     matters: in general, D(P||Q) != D(Q||P)
+"""
+def kld_discrete(p,
+             q,
+             units='n',
+             debug=False
+             ):
+    """
+        p: numpy array
+        q: numpy array
+        debug: Boolean. Prints information to console.
+        
+        The definition is:
+            D(P||Q) = <log(p/q)>_p
+        
+        Compare: D(Q||P) = <log(q/p)>_q
+    """
+    
+    ## 1. Check inputs
+    if units!='n' and units!='b': logging.error("Units must be nats or bits")
+    
+    ## 2. Normalise.
+    ##    This step ensures that the distributions sum to 1,
+    ##     as is required for probability distributions.
+    p = p / np.sum(p)
+    q = q / np.sum(q)
+    
+    ## 3. Get KLD in nats
+    kld = entropy(p,q)
+    
+    ## 4. Convert to bits if required
+    if units=='b': kld /= np.log(2)
+    
+    ## 5. Return
+    return kld
+    
+
+
+"""
+    kld_cont()
+    Relative entropy (i.e. Kullback-Leibler divergence)
+     from Q to P for continuous distributions.
     Note that the order in which the distributions are supplied
      matters: in general, D(P||Q) != D(Q||P)
 """
