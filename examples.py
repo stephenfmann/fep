@@ -4,6 +4,7 @@ import numpy as np
 from scipy import stats,integrate
 import matplotlib.pyplot as plt
 from datetime import datetime
+import logging # error reporting
 
 import calc as cl
 
@@ -96,7 +97,8 @@ def ex_cont(
         w_start=0.01,   # compute posterior from
         w_end=5,        # compute posterior to
         w_grain=0.01,   # level of detail for integrating and plotting
-        normalise=True  # include normalisation term in the denominator
+        normalise=True, # include normalisation term in the denominator
+        debug=False
         ):
     """
         Example adapted from Bogacz, exercise 1, page 200.
@@ -139,7 +141,7 @@ def ex_cont(
                       p_cond=p_x_given_w_func, 
                       q=q_w, 
                       x=x,
-                      debug=False)
+                      debug=debug)
     print(vfe)
     
     
@@ -153,7 +155,7 @@ def ex_cont(
     
     ## Now compute the definite integral
     p_x,error = integrate.quad(integral_component_func,w_start,w_end)
-    print(f"Calculated normalisation prior with error {error}")
+    if debug: logging.info(f"Calculated normalisation prior with error {error}")
     
     ## 4. Do the bayes sum for values at each level of grain
     x_axis = np.arange(w_start,w_end,w_grain)
@@ -174,5 +176,51 @@ def ex_cont(
     plt.plot(x_axis,y_fep)
     plt.show()
 
+"""
+    ex_test_consistency()
+    
+    Check that the two different ways
+    of calculating variational free energy
+    for continuous distributions
+    produce the same result.
+    
+    Initial testing: equal to 10 significant figures :)
+    
+    Now need to figure out which is faster.
+"""
+def ex_test_consistency():
+    
+    x = 2
+    
+    ## 1. Prior distribution over w
+    p_w = stats.norm(loc=3,scale=1)
+    
+    ## 2. Likelihood function, which is the probability of the observation x 
+    ##     given the state w.
+    ## Generator function that receives values of w.
+    ## Assume light intensity is the square of diameter (see text).
+    def p_x_given_w_func(w):
+        return stats.norm(loc=w**2,scale=1)
+    
+    ## The approximate Free Energy way
+    ## Need p(w), p(x|w), x, q(w)
+    ## We already have the first 3
+    ##  now pick an estimate q(w) of the posterior 
+    ##  and calculate the free energy.
+    q_w = stats.norm(loc=1.4,scale=0.3)
+    
+    vfe_1 = cl.vfe_cont(p=p_w, 
+                      p_cond=p_x_given_w_func, 
+                      q=q_w, 
+                      x=x
+                      )
+    print(f"First VFE: {vfe_1}")
+    
+    vfe_2 = cl.vfe_cont_2(p=p_w, 
+                          p_cond=p_x_given_w_func, 
+                          q=q_w, 
+                          x=x)
+    print(f"Second VFE: {vfe_2}")
+
 if __name__=="__main__":
-    ex_cont()
+    ex_test_consistency()
