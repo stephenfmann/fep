@@ -40,17 +40,18 @@ def ex1(
         p(u): int(p(u|v).p(v)) over the range 0.01 to 5.
         
         "Assume that our animal observed the light intensity u = 2, 
-         the level of noise in its receptor is σ_u = 1, 
-         and the mean and variance of its prior expectation of size are v_p = 3 and σ_p = 1. 
-         Write a computer program that computes the posterior probabilities 
-         of sizes from 0.01 to 5, and plots them."
+          the level of noise in its receptor is σ_u = 1, 
+          and the mean and variance of its prior expectation of size are v_p = 3 and σ_p = 1. 
+          Write a computer program that computes the posterior probabilities 
+          of sizes from 0.01 to 5, and plots them."
     """
     
     ## 1. Prior distribution over v
     p_v = stats.norm(loc=v_p,scale=np.sqrt(σ_p))
     
     ## 2. Likelihood function, which is the probability of the observation u given the state v.
-    ## Need to make this a generator function? That passes in values of v from 0.01 to 5?
+    ## Generator function that receives values of v from 0.01 to 5.
+    ## Assume light intensity is the square of diameter (see text).
     def p_u_given_v_func(v):
         return stats.norm(loc=v**2,scale=np.sqrt(σ_u))
     

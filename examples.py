@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+from scipy import stats,integrate
 import matplotlib.pyplot as plt
 from datetime import datetime
 
@@ -87,6 +88,91 @@ def example_2x2(savefig=False,both=True):
         fp = "vfe_fig_1_" + datetime.strftime(datetime.now(),"%Y%m%d-%H%M%S")
         fig.savefig(fp,dpi=600)
 
+def ex_cont(
+        x=2,            # observed light intensity
+        σ_x=1,          # variance of light intensity (i.e. the noise)
+        w_p=3,          # mean of prior over food item diameter
+        σ_p=1,          # variance of prior over food item diameter
+        w_start=0.01,   # compute posterior from
+        w_end=5,        # compute posterior to
+        w_grain=0.01,   # level of detail for integrating and plotting
+        normalise=True  # include normalisation term in the denominator
+        ):
+    """
+        Example adapted from Bogacz, exercise 1, page 200.
+        
+        An organism infers the diameter (w) of a food item from the light intensity (x) it observes.
+        
+        Compute posterior using Bayes' rule: p(w|x) = p(x|w).p(w) / p(x)
+        
+        x: light intensity
+        w: diameter
+        p(w): normal with mean v_p and variance σ_p
+        p(x|w): normal with mean g(w) = v^2 and variance σ_x.
+        p(x): int(p(x|w).p(w)) over the range 0.01 to 5.
+        
+        "Assume that our animal observed the light intensity x = 2, 
+          the level of noise in its receptor is σ_x = 1, 
+          and the mean and variance of its prior expectation of size are w_p = 3 and σ_p = 1. 
+          Write a computer program that computes the posterior probabilities 
+          of sizes from 0.01 to 5, and plots them."
+    """
+    
+    ## 1. Prior distribution over w
+    p_w = stats.norm(loc=w_p,scale=np.sqrt(σ_p))
+    
+    ## 2. Likelihood function, which is the probability of the observation x 
+    ##     given the state w.
+    ## Generator function that receives values of w.
+    ## Assume light intensity is the square of diameter (see text).
+    def p_x_given_w_func(w):
+        return stats.norm(loc=w**2,scale=np.sqrt(σ_x))
+    
+    ## The approximate Free Energy way
+    ## Need p(w), p(x|w), x, q(w)
+    ## We already have the first 3
+    ##  now pick an estimate q(w) of the posterior 
+    ##  and calculate the free energy.
+    q_w = stats.norm(loc=1.4,scale=0.3)
+    
+    vfe = cl.vfe_cont(p=p_w, 
+                      p_cond=p_x_given_w_func, 
+                      q=q_w, 
+                      x=x,
+                      debug=False)
+    print(vfe)
+    
+    
+    ## The exact Bayesian way
+    
+    ## 3. Prior distribution over x
+    ## Integrate p(x|w).p(w) over the range
+    ## First, define a function that sp.integrate can work with
+    def integral_component_func(w): # w is supplied below, x is known
+        return p_x_given_w_func(w).pdf(x)*p_w.pdf(w)
+    
+    ## Now compute the definite integral
+    p_x,error = integrate.quad(integral_component_func,w_start,w_end)
+    print(f"Calculated normalisation prior with error {error}")
+    
+    ## 4. Do the bayes sum for values at each level of grain
+    x_axis = np.arange(w_start,w_end,w_grain)
+    y_bayes = []
+    y_fep = []
+    
+    for w in x_axis: # the x axis is values of w
+        
+        ## Bayes rule: p(w|x) = p(x|w).p(w) / p(x)
+        p_w_given_x = integral_component_func(w)
+        if normalise:
+            p_w_given_x = p_w_given_x / p_x
+        
+        y_bayes.append(p_w_given_x)
+        y_fep.append(q_w.pdf(w))
+    
+    plt.plot(x_axis,y_bayes)
+    plt.plot(x_axis,y_fep)
+    plt.show()
 
 if __name__=="__main__":
-    example_2x2()
+    ex_cont()

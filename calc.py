@@ -2,7 +2,7 @@
 
 
 import numpy as np
-from scipy.integrate import quad # TODO: integration of continuous distribution
+from scipy.integrate import quad #integrate over continuous distribution
 
 
 
@@ -31,14 +31,14 @@ def vfe_discrete(
             + an observed input value x
     
         Calculate the variational free energy between p and q.
-        F = Energy          - Entropy
+        F = Energy                  - Entropy
           = <log(1/p(x,w))>_q(w)    - <log(1/q(w))>_q(w)
         
         For discrete distributions, <.>_q(w) is the sum over values of q(w).
         For continuous distributions, <.>_q(w) would be the integral over values of q(w).
         
-        This function is the discrete version.
-        See vfe_cont for the continuous version.
+        This function is the DISCRETE version.
+        See vfe_cont() for the continuous version.
         
     """
     
@@ -75,6 +75,7 @@ def vfe_discrete(
 
 def vfe_cont(
         p,
+        p_cond,
         q,
         x,
         units='n',
@@ -83,9 +84,15 @@ def vfe_cont(
     """
         Calculate variational free energy for continuous distributions.
         
-        p: [TODO TYPE] representing p(w,x), two-dimensional
-        q: [TODO TYPE] representing q(w), one-dimensional
-        x: integer representing the value of x observed. 
+        p: subclass of scipy.stats.rv_continuous
+            representing p(w)
+        p_cond: Represents p(x|w).
+                 Generator function that returns a
+                 subclass of scipy.stats.rv_continuous
+                 given a value of w.
+        q: subclass of scipy.stats.rv_continuous
+            representing q(w)
+        x: [TODO TYPE] representing the value of x observed. 
         units: [n]ats or [b]its
         debug: set to True to see verbose output
         
@@ -98,50 +105,51 @@ def vfe_cont(
             + an observed input value x
     
         Calculate the variational free energy between p and q.
-        F = Energy - Entropy
-          = <log(1/p(x,w))>_q(w) - <log(1/q(w))>_q(w)
+        F = Energy                  - Entropy
+          = <log(1/p(x,w))>_q(w)    - <log(1/q(w))>_q(w)
         
-        For continuous distributions, <.>_q(w) is the integral over values of q(w).
         For discrete distributions, <.>_q(w) would be the sum over values of q(w).
+        For continuous distributions, <.>_q(w) is the integral over values of q(w).
         
-        This function is the continuous version.
-        See vfe_discrete for the discrete version
+        Instead of p(x,w) we use p(w)*p(x|w)
+        
+        This function is the CONTINUOUS version.
+        See vfe_discrete() for the discrete version.
         
     """
     
-    """
-    ## test
-    mean = 5
-    std = 1
-
-    #y = norm.pdf(x,5,1)
-    def normal_distribution_function(x):
-        value = norm.pdf(x,mean,std)
-        return value
-    
-    #x1 = mean + std
-    #x2 = mean + 2.0 * std
-
-    res, err = quad(normal_distribution_function, x1, x2)
-    
-    return (res,err)
-    """
-    
-    def erg(z):
-        ## TODO: p should be chosen with respect to observed value x
-        value = q.pdf(z)*np.log(1/p.pdf(z))
-        return value
-    
-    def ent(z):
-        value = q.pdf(z)*np.log(1/q.pdf(z))
-        return value
+    ## 0. Check inputs
+    if units!='n' and units!='b':
+        print('Error: units must be nats or bits.')
+        return False
     
     ## 1. Calculate Energy
-    energy,err = quad(erg,-np.inf,np.inf) # quad takes function, start, stop
+    def erg(w):
+    ## Integrating: For each value of w,
+        ##  get q(w) at that value of w,
+        q_w = q.pdf(w)
+        ##  get p(w) at that value of w,
+        p_w = p.pdf(w)
+        ##  get p(x|w),
+        p_x_given_w = p_cond(w).pdf(x)
+        
+        ## Calculate energy at that point
+        if p_w*p_x_given_w==0:return 0
+        value = q_w*np.log(1/(p_w*p_x_given_w))
+        
+        ## Convert to bits if necessary.
+        if units=='b': value /= np.log(2)
+        return value
+    
+    #energy,err = quad(erg,-np.inf,np.inf,epsabs=1e-5) # quad takes function, start, stop
+    energy,err = quad(erg,-np.inf,np.inf,epsabs=1e-3) # quad takes function, start, stop
+    if debug:print(f"Calculated energy {energy} with error {err}")
     
     ## 2. Calculate Entropy
-    ## Maybe there is just a simple scipy or numpy function for entropy of q?
-    entropy,err = quad(ent,-np.inf,np.inf)
+    entropy = q.entropy()
+    if units=='b': entropy/=np.log(2)
+    
+    if debug: print("Entropy: "+str(entropy))
     
     ## 3. subtract entropy from energy
     F = energy - entropy
