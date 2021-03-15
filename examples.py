@@ -7,7 +7,7 @@ from datetime import datetime
 import calc as cl
 
 
-def example_2x2(savefig=False):
+def example_2x2(savefig=False,both=True):
     """
         savefig: (boolean) save the figure to an external PNG file?
     
@@ -54,16 +54,16 @@ def example_2x2(savefig=False):
         ## Create the estimated distribution across world states
         q = np.array([q0,1-q0])
         
-        F_0 = cl.vfe(p,q,0) # free energy when x=0
-        F_1 = cl.vfe(p,q,1) # free energy when x=1
+        F_0 = cl.vfe_discrete(p,q,0) # free energy when x=0
+        F_1 = cl.vfe_discrete(p,q,1) # free energy when x=1
         
         F_0_series.append(F_0)
         F_1_series.append(F_1)
     
     ## 5. Plot
     '''
-    plt.plot(q_range,F_0_series,label="free energy when x=0")
-    plt.plot(q_range,F_1_series,label="free energy when x=1")
+    plt.plot(q_range,F_0_series,label="free energy when x=meow")
+    plt.plot(q_range,F_1_series,label="free energy when x=purr")
     plt.legend()
     '''
     
@@ -71,13 +71,13 @@ def example_2x2(savefig=False):
     fig = plt.figure()
     
     ax = plt.axes()
-    ax.plot(q_range,F_0_series,label="Free energy when $x=x_0$")
-    ax.plot(q_range,F_1_series,label="Free energy when $x=x_1$")
+    ax.plot(q_range,F_0_series,label="Free energy when $x=$meow")
+    if both: ax.plot(q_range,F_1_series,label="Free energy when $x=$purr")
     ax.legend()
     
     ## 5b. Axis labels
-    plt.xlabel('Estimated probability of world state $q(w_0)$')
-    plt.ylabel('Free energy ($F$)')
+    plt.xlabel('Degree of belief $q($kitchen$)$')
+    plt.ylabel('Free energy')
     
     ## 5c. Display plot
     plt.show()
