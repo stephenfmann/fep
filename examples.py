@@ -89,6 +89,7 @@ def example_2x2(savefig=False,both=True):
         fp = "vfe_fig_1_" + datetime.strftime(datetime.now(),"%Y%m%d-%H%M%S")
         fig.savefig(fp,dpi=600)
 
+
 def ex_cont(
         x=2,            # observed light intensity
         σ_x=1,          # variance of light intensity (i.e. the noise)
@@ -176,19 +177,20 @@ def ex_cont(
     plt.plot(x_axis,y_fep)
     plt.show()
 
-"""
-    ex_test_consistency()
-    
-    Check that the two different ways
-    of calculating variational free energy
-    for continuous distributions
-    produce the same result.
-    
-    Initial testing: equal to 10 significant figures :)
-    
-    Now need to figure out which is faster.
-"""
+
 def ex_test_consistency():
+    """
+        ex_test_consistency()
+        
+        Check that the two different ways
+        of calculating variational free energy
+        for continuous distributions
+        produce the same result.
+        
+        Initial testing: equal to 10 significant figures :)
+        
+        Now need to figure out which is faster.
+    """
     
     x = 2
     
@@ -222,5 +224,243 @@ def ex_test_consistency():
                           x=x)
     print(f"Second VFE: {vfe_2}")
 
+
+def ex_fractions():
+    """
+        For two distributions N_x, M_x over events X,
+         compare SUM(N_x/M_x) with |X|.
+    """
+    
+    N = 1000
+    
+    def cost(N,N_x,M_x):
+        """
+            The average cost per customer
+             of assuming M_x when N_x is true.
+        """
+        total = 0
+        
+        ## Do the sum
+        for i in range(len(N_x)):
+            component = (N_x[i] / N) * ((1/M_x[i])-(1/N_x[i]))
+            total+=component
+        
+        return total
+    
+    N_x = np.array([500,500])
+    
+    xvalues = []
+    yvalues = []
+    
+    ## Get sum for range of M_x's
+    for i in np.arange(5,1000,5):
+        M_x = np.array([i,1000-i])
+        
+        avg_cost = cost(N,N_x,M_x)
+        
+        ## Data for plot
+        xvalues.append(i)
+        yvalues.append(avg_cost)
+    
+    plt.plot(xvalues,yvalues)
+    plt.show()
+
+
+def ex_rel_ent(debug=False):
+    """
+        Testing intuitions about relative entropy.
+    """
+    
+    ## 1. Initialise
+    ## Set up the first distribution
+    ##  and report its entropy (in bits)
+    p = np.array([1/2,1/4,1/8,1/8])
+    ent_p = stats.entropy(p) / np.log(2)
+    print(f"Entropy of p: {ent_p:.4f}") # precision: 4 decimal places
+    
+    ## Set up the second distribution
+    ##  and report its entropy (in bits)
+    q = np.array([1/4,1/4,1/4,1/4])
+    ent_q = stats.entropy(q) / np.log(2)
+    print(f"Entropy of Q: {ent_q:.4f}") # precision: 4 decimal places
+    
+    ######################################################
+    ## 2. Component calculations
+    
+    ## Calculate the cross-entropy of p from q: defined as SIGMA(p.log(1/q))
+    p_ent_q = 0
+    for i in range(len(q)):
+        
+        ## Get the component of the sum for this element
+        comp = p[i] * np.log(1/q[i])
+        
+        ## Convert to bits
+        comp /= np.log(2)
+        
+        ## Add to total
+        p_ent_q += comp
+        
+        if debug:print(f"Component {i}: {comp}")
+
+    
+    ## Report p-entropy of q
+    print(f"P-entropy of Q: {p_ent_q:.4f}")
+    
+    ## Calculate the cross-entropy of q from p: defined as SIGMA(q.log(1/p))
+    q_ent_p = 0
+    for i in range(len(p)):
+        
+        ## Get the component of the sum for this element
+        comp = q[i] * np.log(1/p[i])
+        
+        ## Convert to bits
+        comp /= np.log(2)
+        
+        ## Add to total
+        q_ent_p += comp
+        
+        if debug:print(f"Component {i}: {comp}")
+
+    
+    ## Report q-entropy of p
+    print(f"Q-entropy of P: {q_ent_p:.4f}")
+    
+    ######################################################
+    ## 3. Relative entropy calculations
+    
+    ## Calculate the relative entropy of P from Q
+    rel_p = p_ent_q - ent_p 
+    print(f"Relative entropy of P from Q: {rel_p:.4f}")
+    
+    ## Calculate the relative entropy of P from Q using scipy
+    rel_p_sp = stats.entropy(p,q) / np.log(2)
+    print(f"Relative entropy of P from Q (scipy): {rel_p_sp:.4f}")
+    
+    ## Calculate the relative entropy of Q from P
+    rel_q = q_ent_p - ent_q 
+    print(f"Relative entropy of Q from P: {rel_q:.4f}")
+    
+    ## Calculate the relative entropy of Q from P using scipy
+    rel_q_sp = stats.entropy(q,p) / np.log(2)
+    print(f"Relative entropy of Q from P (scipy): {rel_q_sp:.4f}")
+
+
+def rel_ent_theorem(
+        p=np.array([0.4,0.6]),
+        q=np.array([0.75,0.25]),
+        r=np.array([0.1,0.9]),
+        debug=False):
+    """
+        The default arrays provide a counterexample
+         to the claim that D(p||q) < D(p||r) ==> D(q||p) < D(r||p)
+
+    Parameters
+    ----------
+    p, q, r: numpy arrays.
+      Represent probability distributions.
+    debug : boolean, optional
+        Verbose reporting. The default is False.
+
+    Returns
+    -------
+    None.
+
+    """
+    
+    n = 2
+    
+    ## 1. Generate three arbitrary probability distributions.
+    
+    ## P
+    if p is None:
+        p = np.random.random(n)
+    
+    ## Normalise
+    p /= p.sum()
+    
+    if debug: print(p)
+    if debug: print(p.sum())
+    
+    ## Q
+    if q is None:
+        q = np.random.random(n)
+    
+    ## Normalise
+    q /= q.sum()
+    
+    if debug: print(q)
+    if debug: print(q.sum())
+    
+    ## R
+    if r is None:
+        r = np.random.random(n)
+    
+    ## Normalise
+    r /= r.sum()
+    
+    if debug: print(r)
+    if debug: print(r.sum())
+    
+    
+    ## 2. Get D(p||q) and D(p||r), and see which is bigger
+    
+    dpq = stats.entropy(p,q) / np.log(2)
+    if debug:print(f"D(P||Q): {dpq}")
+    dpr = stats.entropy(p,r) / np.log(2)
+    if debug:print(f"D(P||R): {dpr}")
+    
+    sign_1 = np.sign(dpq - dpr)
+    if debug: print(f"Sign 1: {sign_1}")
+    
+    
+    ## 3. Get D(q||p) and D(r||p) and see which is bigger
+    dqp = stats.entropy(q,p) / np.log(2)
+    if debug:print(f"D(Q||P): {dqp}")
+    drp = stats.entropy(r,p) / np.log(2)
+    if debug:print(f"D(R||P): {drp}")
+    
+    sign_2 = np.sign(dqp - drp)
+    if debug: print(f"Sign 2: {sign_2}")
+    
+    ## 4. Check
+    assert sign_1 == sign_2
+    
+
+def gauss_and_reciprocal(savefig=False):
+    """
+        Generating images for MPI talk 2021-04-06
+
+    """
+    
+    ## 1. Initialise
+    v_start=0.01   # plot from
+    v_end=6       # plot to
+    v_grain=0.01  # level of detail for plotting
+    
+    p_v = stats.norm(loc=3,scale=np.sqrt(1))
+    
+    ## 2. Data
+    x_axis = np.arange(v_start,v_end,v_grain)
+    y_axis = []
+    for v in x_axis: # the x axis is values of v
+        
+        y_axis.append(np.log(1/p_v.pdf(v)))
+    
+    ## 3. Plotting
+    fig = plt.figure()
+    plt.plot(x_axis,y_axis)
+    plt.show()
+    
+    ## 4. Output
+    if savefig:
+        fp = "gauss_" + datetime.strftime(datetime.now(),"%Y%m%d-%H%M%S")
+        fig.savefig(fp,dpi=600)
+
+
+
 if __name__=="__main__":
-    ex_test_consistency()
+    #ex_test_consistency()
+    #ex_fractions()
+    #ex_rel_ent(debug=True)
+    #rel_ent_theorem(debug=True)
+    gauss_and_reciprocal(True)
