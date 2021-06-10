@@ -23,10 +23,78 @@ Internal states
     φ_i (Greek letter phi): representational unit at level i
     ξ_i (Greek letter Xi): error unit at level i
 
+The two-level model:
+    BASIC TERMS
+    v_1 = u
+    v_2 = v
+    v_p = prior expectation of v
+    g_1 = g
+    g_2 is not used
+    θ_1 = θ
+    θ_2 is not used
+    ε_1 = ε_u
+    ε_2 = ε_p
+    Σ_1 = Σ_u
+    Σ_2 = Σ_p
+    λ_1 = λ_u
+    λ_2 = λ_p
+    φ_1 = u
+    φ_2 = φ
+    
+    ERROR TERMS
+    Prediction error
+    ξ_u = Σ^{-1/2}_u (u-g(φ,θ))
+        = (u-g(φ,θ)) / (1 + λ_u)
+    
+    Prior constraint
+    ξ_p = Σ^{-1/2}_p (φ - v_p)
+        = (φ - v_p) / (1 + λ_p)
+    
+    OBJECTIVE FUNCTION
+    
+    L = -1/2 (ξ^T_uξ_u + ξ^T_pξ_p + log|Σ_u| + log|Σ_p|)
+    
+    F = <L>_u
+    
+    ASSUMPTION 1: Noise is Gaussian (p. 822)
+    Σ_u = Σ(λ_u)
+    Σ^{1/2}_u = 1 + λ_u
+    Σ^{-1/2}_u = (1 + λ_u)^-1
+    
+    ASSUMPION 2 aka HEBBIAN ASSUMPTION: 
+    g(φ,θ) = φθ
+    
+    DERIVATIVES w.r.t φ:
+    dξ_u/dφ = θ / (1+λ_u)
+    
+    dξ_p/dφ = 1 / (1+λ_p)
+    
+    E-M ALGORITHM STEPS
+    E-step
+    
+    φ'  = dF/dφ
+        = -(dξ_u/dφ)ξ_u -(dξ_p/dφ)ξ_p
+        = [ θ(θφ - u) / (1+λ_u)^2 ] + [ (v_p - φ) / (1+λ_p)^2 ]
+
+    M-step
+    
+    θ'  = dF/dθ 
+        = -<(dξ_u/dθ)ξ_u>_u     (In Friston (2005) eqn 3.11 the second ξ has no subscript.)
+        = <φ^Tξ_u>_u / (1+λ_u) (Eqn 4.2)
+        
+    λ'_i = dF/dλ_i
+         = -<((dξ_i/dλ_i)ξ_i)>_u - (1/(1+λ_i))
+         = (<ξ_iξ^T_i>_u - 1) / (1+λ_i)
+
+See also:
+    + My (draft) post https://stephenmann.isaphilosopher.com/posts/friston2005/
+    + Friston's paper https://royalsocietypublishing.org/doi/full/10.1098/rstb.2005.1622
+
 """
 
 import numpy as np
 from scipy import linalg
+import logging
 
 
 def setup():
@@ -36,9 +104,6 @@ def setup():
      and translation of Friston's model
      into python idiom.
 
-    Returns
-    -------
-    None.
 
     """
     
@@ -99,7 +164,7 @@ def cov_matrix():
             + 1,2 AND 2,1: covariance of weight and height.
         
         From this you can see that covariance matrices are always symmetric.
-        The size of a covariance matrix is DxD, where D is the number of
+        The size of a covariance matrix is NxN, where N is the number of
          random variables involved i.e. the number of dimensions.
     """
     
@@ -171,11 +236,61 @@ def is_pos_semidef(A):
     return np.all(np.linalg.eigvals(A) >= 0)
 
 
-def TEST():
+def calculate_ξ_u(
+        g,
+        u,
+        Σ_u=None,
+        λ_u=None
+        ):
     """
-        For testing while developing.
+        Calculate ξ_u or ξ_p from inputs using either Σ or λ.
         
-        2021-04-16: Friston(2005:821) equation 3.7
+        Sigma form:
+            ξ_u = Σ^{-1/2}_u (u-g(φ,θ))
+        
+        Lambda form:
+            ξ_u = (u-g(φ,θ)) / (1 + λ_u)
+        
+    """
+    
+    if Σ_u is None and λ_u is None: 
+        ## Error!
+        logging.error('Calculating ξ_u requires either Σ_u or λ_u')
+        return False
+    
+    ## Prioritise Σ_u
+    if Σ_u is not None:
+        Σ_u_minus_half = cov_matrix_negative_half(Σ_u)
+    
+        ξ_u = np.dot(Σ_u_minus_half,u - g)
+        
+        return ξ_u
+    
+    ## λ_u is not None
+    ξ_u = (u-g) / (1+λ_u)
+    
+    return ξ_u
+
+
+def calculate_ξ_p():
+    """
+    
+    TODO
+    
+    """
+    
+    pass
+
+def objective_function():
+    """
+        The objective function L as defined on p 821 eq 3.7
+        
+        Deriving eq 3.7 from eq 3.4:
+        + https://stephenmann.isaphilosopher.com/posts/friston2005/
+        + Wikipedia: https://en.wikipedia.org/wiki/Multivariate_normal_distribution
+        + Matrix cookbook: http://www.math.uwaterloo.ca/~hwolkowi//matrixcookbook.pdf
+        + StackExchange 1: https://stats.stackexchange.com/questions/345784/conditional-probability-distribution-of-multivariate-gaussian
+        + StackExchange 2: the intuition: https://stats.stackexchange.com/a/71303
         
         Even when the predictions exactly match the inputs
          and the representations exactly match the causes,
@@ -256,6 +371,107 @@ def TEST():
     
     print(f"ERROR: {str(error)}")
     
+    return error
+
+
+def e_step(φ,   # the neuron whose value is going to change
+           θ,   # parameter determining how v changes u
+           u,   # observation
+           λ_u, # noise of observation
+           v_p, # prior over cause
+           λ_p  # noise of cause
+           ):
+    """
+    
+    First step of the expectation-maximisation algorithm.
+    
+    We specify how φ changes, φ', as a function of
+     the objective function F = <L>_u.
+    
+    Friston gives eqn (3.11) in a form that can 
+     generalise to a hierarchy of any depth:
+         
+         φ'_{i+1} = dF/dφ_{i+1} 
+                  = -(dξ^T_i/dφ_{i+1}).ξ_i -(dξ^T_{i+1}/dφ_{i+1}).ξ_{i+1}
+    
+    See the initial comment in this script for how this equation looks
+     in a two-level system.
+    Upshot:
+        
+        φ' = [ θ(θφ - u) / (1+λ_u)^2 ] + [ (v_p - φ) / (1+λ_p)^2 ]
+
+    """
+    
+    first_term = θ*(θ*φ - u) / (1+λ_u)**2
+    
+    second_term = (v_p - φ) / (1+λ_p)**2
+    
+    φ_prime = first_term + second_term
+    
+    ## return φ_prime or update φ here?
+    
+    return φ_prime
+
+
+def m_step(φ,   # the neuron whose value is going to change
+           θ,   # parameter determining how v changes u
+           u,   # observation
+           λ_u, # noise of observation
+           v_p, # prior over cause
+           λ_p  # noise of cause
+           ):
+    """
+    
+    See intro notes.
+    
+    How θ, λ_u and λ_p change.
+    
+    θ' = <φ^Tξ_u>_u / (1+λ_u) (Eqn 4.2)
+    
+    λ'_u = (<ξ_uξ^T_u>_u - 1) / (1+λ_u)
+    λ'_p = (<ξ_pξ^T_p>_u - 1) / (1+λ_p)
+
+    """
+    
+    pass
+    
+
+
+def TEST2(v=None,A=None):
+    """
+        As part of trying to understand Friston's derivation
+         of eq 3.7 from eq 3.4,
+         check to see if the following identity holds:
+             
+             v: n-vector
+             A: nxn matrix
+             
+             v^T A^{-1} v = (A^{-1/2}v)^T . (A^{-1/2}v)
+    """
+    
+    if A is None:
+        A,B = cov_matrix()
+    
+    if v is None:
+        v = np.random.random((2,))
+    
+    A_inv = np.linalg.inv(A)
+    
+    lhs = round(np.dot(v,np.dot(A_inv,v)),8)
+    
+    print(f"LHS: {str(lhs)}")
+    
+    A_inv_sqrt = cov_matrix_negative_half(A)
+    
+    rhs_component = np.dot(A_inv_sqrt,v)
+    
+    rhs = round(np.dot(rhs_component,rhs_component),8)
+    
+    print(f"RHS: {str(rhs)}")
+    
+    print(f"RHS equals LHS? {str(rhs==lhs)}")
+
 
 if __name__ == "__main__":
-    TEST()
+    #TEST2()
+    pass

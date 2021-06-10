@@ -9,7 +9,7 @@ import logging # error reporting
 import calc as cl
 
 
-def example_2x2(savefig=False,both=True):
+def example_2x2_vfe(savefig=True,both=False):
     """
         savefig: (boolean) save the figure to an external PNG file?
     
@@ -51,6 +51,15 @@ def example_2x2(savefig=False,both=True):
     F_0_series = [] # values of F when x=0
     F_1_series = [] # values of F when x=1
     
+    ## SFM 2021-06-07: plot overfitting penalty (KLD) and explaining penalty
+    p_w = p.sum(axis=1)
+    p_x_w = p.T/p_w
+    p_x_w = p_x_w.T
+    D_0_series = []
+    E_0_series = []
+    
+    F_check_series = [] # confirm F = D+E
+    
     ## Calculate free energy for various estimates q
     for q0 in q_range:
         ## Create the estimated distribution across world states
@@ -61,6 +70,18 @@ def example_2x2(savefig=False,both=True):
         
         F_0_series.append(F_0)
         F_1_series.append(F_1)
+        
+        D_0_series.append(stats.entropy(q,p_w))
+        
+        ## Penalty-for-explaining sum
+        e_sum = 0
+        i=0
+        for q_value in q:
+            e_sum+=q_value*np.log(1/p_x_w[i,0]) # 0th value of x, ith value of w
+            i+=1
+        E_0_series.append(e_sum)
+        
+        F_check_series.append(stats.entropy(q,p_w)+e_sum)
     
     ## 5. Plot
     '''
@@ -73,8 +94,14 @@ def example_2x2(savefig=False,both=True):
     fig = plt.figure()
     
     ax = plt.axes()
-    ax.plot(q_range,F_0_series,label="Free energy when $x=$meow")
+    ax.plot(q_range,F_0_series,color='k',linestyle='-',label="Free energy when $x=$meow")
     if both: ax.plot(q_range,F_1_series,label="Free energy when $x=$purr")
+    
+    ## SFM 2021-06-07: penalties
+    ax.plot(q_range,D_0_series,color='k',linestyle='-.',label="Penalty for overfitting")
+    ax.plot(q_range,E_0_series,color='k',linestyle='--',label="Penalty for failing to explain data")
+    #ax.plot(q_range,F_check_series,label="VFE check")
+    
     ax.legend()
     
     ## 5b. Axis labels
@@ -87,6 +114,159 @@ def example_2x2(savefig=False,both=True):
     ## 6. Output
     if savefig:
         fp = "vfe_fig_1_" + datetime.strftime(datetime.now(),"%Y%m%d-%H%M%S")
+        fig.savefig(fp,dpi=600)
+
+
+def ex_efe_bar(savefig=True):
+    """
+        Expected free energy on a simple bar chart.
+
+    """
+    
+    ## Joint matrix
+    p = np.array([[0.4,0.2],[0.1,0.3]])
+    
+    ## Conditional matrix
+    q = np.array([[0.9, 0.1],[0.5,0.5]])
+    
+    ## Calculate expected free energy
+    efe_0 = cl.efe_discrete(p,q,0)
+    efe_1 = cl.efe_discrete(p,q,1)
+    
+    ## Components of efe
+    p_w = p.sum(1)
+    p_x_w = p.T/p_w
+    p_x_w = p_x_w.T
+    
+    ## Normalise: float error fix
+    p_x_w = p_x_w / p_x_w.sum(1)
+    
+    ## KLD preferences
+    kld_0 = stats.entropy(q[0],p_w)
+    kld_1 = stats.entropy(q[1],p_w)
+    
+    ## Conditional entropy
+    cond_ent_0 = cl.cond_ent(p_x_w,q[0]) # expects q(w|z) and p(x|w)
+    cond_ent_1 = cl.cond_ent(p_x_w,q[1]) # expects q(w|z) and p(x|w)
+    
+    ## 5. Plot
+    ## See also https://www.tutorialspoint.com/matplotlib/matplotlib_bar_plot.htm
+    ## Data and data labels
+    fig = plt.figure()
+    ax = fig.add_axes([0,0,1,1])
+    
+    ## Alignment
+    X = np.arange(2)
+    
+    ax.bar(X+0.00, [efe_0,efe_1], color='black', width=0.2)
+    ax.bar(X+0.25, [kld_0,kld_1], color='silver', width=0.2, tick_label=["kitchen","bedroom"])
+    ax.bar(X+0.50, [cond_ent_0,cond_ent_1], color='dimgrey', width=0.2)
+    
+    ## Labels
+    for i, v in enumerate([efe_0,efe_1]):
+        ax.text(i-0.07, v+0.005, str(v.round(3)), color='black', fontweight='bold')
+        
+    
+    for i, v in enumerate([kld_0,kld_1]):
+        ax.text(i+0.18, v+0.005, str(v.round(3)), color='black', fontweight='bold')
+    
+    for i, v in enumerate([cond_ent_0,cond_ent_1]):
+        ax.text(i+0.43, v+0.005, str(v.round(3)), color='black', fontweight='bold')
+    
+    #ax.bar(X + 0.00, data[0], color = 'b', width = 0.25)
+    #ax.bar(X + 0.25, data[1], color = 'g', width = 0.25)
+    #ax.bar(X + 0.50, data[2], color = 'r', width = 0.25)
+    
+    ax.legend(labels=['Expected free energy', 'Preference penalty', 'Surprise penalty'])
+    
+    ## 5b. Axis labels
+    plt.xlabel('Where you put the cat')
+    plt.ylabel('Expected free energy')
+    
+    ## 5c. Display plot
+    plt.show()
+    
+    ## 6. Output
+    if savefig:
+        fp = "efe_fig_1_" + datetime.strftime(datetime.now(),"%Y%m%d-%H%M%S")
+        fig.savefig(fp,dpi=600,bbox_inches='tight')
+
+
+
+def example_2x2_efe(savefig=False,both=False):
+    """
+        savefig: (boolean) save the figure to an external PNG file
+    
+        Imagine a world with two unobservable states w1, w2
+                                two observable states x1, x2
+                                two available acts, z1, z2
+        Your system has a generative model p(w,x), an estimate q(w|z), and can act z.
+        
+        We choose z to minimize expected free energy:
+            G = sum_w[ q(w|z) . sum_x[ p(x|w) log(q(w|z)/p(w,x)) ] ]
+            
+        This example function plots the values of G as a function of the first entry in q,
+         for different inputs z1 and z2.
+        Because q only has two values (the expected probabilities of w1 and w2),
+         it is possible to graph G as a function of its first value.
+    """
+    
+    ## 1. Choose the range of values of q to be plotted.
+    q_range = np.arange(0.1,1.,0.01) # q1 ranges from 0.1 to 0.9 at 0.1 increments
+    
+    ## 2. Choose a generative model p(w,x)
+    ##  joint probability of w1 and x1: 0.4
+    ##  joint probability of w1 and x2: 0.2
+    ##  joint probability of w2 and x1: 0.1
+    ##  joint probability of w2 and x2: 0.3
+    ##  the implied marginal distributions are p(w) = (0.6,0.4) and p(x) = (0.5,0.5)
+    p = np.array([[0.4,0.2],[0.2,0.3]])
+    
+    ## 3. Initialise
+    G_0_series = [] # values of G when z=0
+    G_1_series = [] # values of G when z=1
+    
+    ## Calculate free energy for various estimates q
+    for q0 in q_range:
+        ## Create the estimated distribution across world states.
+        ## Because of the way the expected free energy function works,
+        ##  q must be a matrix.
+        ## The function will choose only one row of this matrix, though.
+        q = np.array([[q0,1-q0],[q0,1-q0]]) 
+        
+        G_0 = cl.efe_discrete(p,q,0) # free energy when z=0
+        G_1 = cl.efe_discrete(p,q,1) # free energy when z=1
+        
+        G_0_series.append(G_0)
+        G_1_series.append(G_1)
+    
+    ## 5. Plot
+    '''
+    plt.plot(q_range,F_0_series,label="free energy when x=meow")
+    plt.plot(q_range,F_1_series,label="free energy when x=purr")
+    plt.legend()
+    '''
+    
+    #print(np.argmin(G_0_series)) # debug
+    
+    ## 5a. Data and data labels
+    fig = plt.figure()
+    
+    ax = plt.axes()
+    ax.plot(q_range,G_0_series,label="Expected free energy when $z=$kitchen")
+    if both: ax.plot(q_range,G_1_series,label="Expected free energy when $z=$bedroom")
+    #ax.legend()
+    
+    ## 5b. Axis labels
+    plt.xlabel('Conditional probability $q($kitchen$|z)$')
+    plt.ylabel('Expected free energy')
+    
+    ## 5c. Display plot
+    plt.show()
+    
+    ## 6. Output
+    if savefig:
+        fp = "efe_fig_1_" + datetime.strftime(datetime.now(),"%Y%m%d-%H%M%S")
         fig.savefig(fp,dpi=600)
 
 
@@ -459,8 +639,16 @@ def gauss_and_reciprocal(savefig=False):
 
 
 if __name__=="__main__":
-    #ex_test_consistency()
-    #ex_fractions()
-    #ex_rel_ent(debug=True)
-    #rel_ent_theorem(debug=True)
-    gauss_and_reciprocal(True)
+    ex_efe_bar()
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    

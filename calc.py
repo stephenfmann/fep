@@ -5,6 +5,8 @@ from scipy.integrate import quad #integrate over continuous distribution
 from scipy.stats import entropy
 import logging # error reporting
 
+import util as ut # custom utility functions
+
 
 def vfe_discrete(
         p,
@@ -362,4 +364,139 @@ def kld_cont(p,
     
     
     return kld
+
+
+def efe_discrete(
+        p,
+        q,
+        z,
+        units='n',
+        debug=False
+        ):
+    """
+        Calculate expected free energy using my definition
+        https://stephenmann.isaphilosopher.com/posts/efe/
+        
+        G = sum_w[ q(w|z) . sum_x[ p(x|w) log(q(w|z)/p(w,x)) ] ]
+    """
+    
+    ## 1. Assemble q(w|z) using q and z
+    ## The q we are given is a conditional matrix q(w|z)
+    ## We want a row of that matrix corresponding to
+    ##  the z that occurred
+    q_cond = q[z]
+    
+    ## Get p(w)
+    ## w is the rows, x is the columns
+    ## so we sum along the columns
+    p_uncond = np.sum(p,axis=1)
+    
+    ## Get p(x|w) matrix
+    p_cond = p.T / p_uncond
+    p_cond = p_cond.T
+    
+    ## 2. Outer sum followed by inner sum
+    ## Do it explicitly
+    total = 0.
+    i=0
+    for w in q_cond:
+        
+        p_cond_row = p_cond[i]
+        
+        subtotal = 0.
+        j=0
+        for x in p_cond_row:
+            
+            ## Get value of p(w,x) at this point
+            p_point = p[i,j] # i is the index of w, j is the index of x
+            #print(f"p_point: {p_point}")
+            
+            ## Add value of inner sum at this point
+            subtotal += x * np.log(w/p_point)
+            
+            #print(subtotal) #debug
+            
+            j+=1
+        
+        ## Add value of total sum at this point
+        total += w*subtotal
+        i+=1
+    
+    return total
+
+
+def cond_ent(p,q):
+    """
+        Conditional entropy weighted by q rather than p.
+        
+        sum_w[ q(w|z) sum_x[ p(x|w) * log(1/p(x|w)) ] ]
+        
+        p: conditional matrix
+        q: single row of conditional matrix
+        
+    """
+    
+    ## Check data
+    ut.check_cond_mat(p)
+    ut.check_dist(q)
+
+    i=0
+    total = 0.
+    for w in q:
+        subtotal = 0.
+        for x in p[i]: # an entry in that row
+            subtotal += x*np.log(1/x)
+        
+        total+= w*subtotal
+        
+        i+=1
+    
+    return total
+
+def get_p_wx_from_agent(agent):
+    """
+        Extract a frequency distribution p(w,x)
+         from an agent's history arrays
+    """
+    
+    w_count = agent.w_hist
+    x_count = agent.x_hist
+    
+    ## Tally for w,x
+    p_wx_count = []
+    for i in range(len(w_count)):
+        p_wx_count.append([w_count[i],x_count[i]])
+    
+    ## Frequency distribution for w,x
+    p_wx_dict = {}
+    for l in p_wx_count:
+        if p_wx_dict.get(str(l)):
+            p_wx_dict[str(l)] += 1
+        else:
+            p_wx_dict[str(l)] = 1
+    
+    ## Array with statistics
+    ## Lookup table 
+    w_lookup = [-1,1]
+    x_lookup = np.arange(min(x_count),max(x_count)+1,1)
+    
+    p_wx = np.zeros((len(w_lookup),len(x_lookup))) # w can take 2 values, x can take 4
+    
+    for i in range(len(p_wx)):
+        for j in range(len(p_wx[i])):
+            ## Get string with list name
+            l = [w_lookup[i],x_lookup[j]]
+            #print(l) # debug
+            if p_wx_dict.get(str(l)):
+                p_wx[i][j] = p_wx_dict[str(l)]
+            else:
+                p_wx[i][j]=0
+            
+    
+    return p_wx / p_wx.sum()
+    
+    
+    
+    
+    
     
