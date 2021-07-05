@@ -12,6 +12,7 @@ from datetime import datetime
 
 def plot_vfe(q_range,
              Fseries=[], # list of lists
+             xlabel='First component of degree of belief $q$',
              savefig=False):
     
     fig = plt.figure()
@@ -19,17 +20,50 @@ def plot_vfe(q_range,
     ax = plt.axes()
     
     i=1
+
     for F in Fseries:
-        ax.plot(q_range,F[0],label=F[1])
+        ax.plot(q_range,F[0],label=F[1],color='k')
         i+=1
     
     ax.legend()
     
-    ## 5b. Axis labels
-    plt.xlabel('First component of degree of belief $q$')
+    ## a. axis limits
+    plt.ylim(0,5)
+    
+    ## b. Axis labels
+    plt.xlabel(xlabel)
     plt.ylabel('Free energy')
     
-    ## 5c. Display plot
+    ## c. Display plot
+    plt.show()
+    
+    ## 6. Output
+    if savefig:
+        fp = "vfe_fig_1_" + datetime.strftime(datetime.now(),"%Y%m%d-%H%M%S")
+        fig.savefig(fp,dpi=600)
+
+def plot_efe_time(timesteps,
+             efe_list, # list
+             xlabel='Timesteps',
+             ylabel='Expected free energy',
+             savefig=False):
+    
+    fig = plt.figure()
+    
+    ax = plt.axes()
+
+    ax.plot(timesteps,efe_list,color='k')
+    
+    #ax.legend()
+    
+    ## a. axis limits
+    plt.ylim(0,5)
+    
+    ## b. Axis labels
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    
+    ## c. Display plot
     plt.show()
     
     ## 6. Output

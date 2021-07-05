@@ -58,6 +58,18 @@ DEATH_CONDITIONS = [
     np.array([1,1,1,1])
 ]"""
 
+## Default prob dist is conceptually equivalent to a preference distribution.
+## You most want X=0 because that is furthest from death condition.
+## Rows are w, columns are x
+P_WX_DEFAULT = np.array([
+    [0,0.01,0.02,0.06,0.1,0.12,0.1,0.06,0.02,0.01,0],
+    [0,0.01,0.02,0.06,0.1,0.12,0.1,0.06,0.02,0.01,0]
+    ])
+
+## Epsilon to avoid zero division
+EPS = 0.001
+
+
 def check_death(agent):
     """
         Checks whether the agent's states meet the death condition
@@ -82,10 +94,12 @@ def die(agent):
         Output current states
     """
     
-    print(agent.w)
-    print(agent.x)
-    print(agent.y)
-    print(agent.z)
+    agent.dead=True
+    
+    #print(agent.w)
+    #print(agent.x)
+    #print(agent.y)
+    #print(agent.z)
 
 def run(
         t=100   # timesteps
@@ -118,11 +132,12 @@ def run(
     for t in np.arange(t):#2
         i=0
         for agent in agents:
+            if agent.dead:continue
             if check_death(agent):
                 die(agent)
-                return agent # test
-                agents.pop(i) # lose the info
-                break
+                #return agent # test
+                #agents.pop(i) # lose the info
+                continue
             agent = do_agent(agent) #4,5,6,7
             i+=1
         if len(agents)==0:break
@@ -180,6 +195,81 @@ def ex_vfe(agent,savefig=False):
     
     op.plot_vfe(q_range,series,savefig)
 
+
+def ex_vfe_time(agent,savefig=False):
+    """
+        Plot variational free energy of agent over time.
+        Figures 5 and 6 of Free Energy: A User's Guide.
+    """
+    
+    p_wx = P_WX_DEFAULT
+    timesteps = range(len(agent.w_hist)) # number of timesteps
+    
+    vfe_list = []
+    
+    for t in timesteps:
+        ## NB it DOESN'T MATTER what w is because p(w,x) is the same.
+        if agent.y_hist[t] == 1: # assume w=1
+            q = np.array([EPS,1-EPS])
+        if agent.y_hist[t] == -1: # assume w=-1
+            q = np.array([1-EPS,EPS])
+        
+        vfe = cl.vfe_discrete(p_wx,q,agent.x_hist[t]+5) # shift by 5 because of order of x in p_wx
+        #if vfe > 10: 
+            ## debug
+            #print(p_wx)
+            #print(q)
+            #print(agent.x_hist[t])
+            #print(t)
+            #return
+        vfe_list.append(vfe)
+    
+    series = [[vfe_list,"F when agent acts randomly"]]
+    
+    ## Plot
+    op.plot_vfe(timesteps,series,xlabel='Timestep',savefig=savefig)
+    
+    return vfe_list
+
+
+def ex_efe_time(agent,savefig=False):
+    """
+        Expected free energy at each timestep
+    """
+    
+    ## 1. Get q(w|z)
+    ## Rows are z, columns are w
+    q = np.array([[0.95,0.05],[0.05,0.95]])
+    
+    timesteps = range(len(agent.z_hist)) # number of timesteps
+    
+    efe_list = []
+    
+    for t in timesteps:
+        ## 2. Get current z
+        z = agent.z_hist[t]
+    
+        ## 3. Get current p(w,x) from P_WX_DEFAULT
+        ## The possible values of w are (-1, 1)
+        ## The possible values of x are one step below and one step above the current value
+        x = agent.x_hist[t] # current value of x
+        p_wx_00 = P_WX_DEFAULT[0][x+5-1] # plus 5 for index, -1 for the value below current
+        p_wx_01 = P_WX_DEFAULT[0][x+5+1] # plus 5 for index, +1 for the value above current
+        p_wx_10 = P_WX_DEFAULT[1][x+5-1] # plus 5 for index, -1 for the value below current
+        p_wx_11 = P_WX_DEFAULT[1][x+5+1] # plus 5 for index, +1 for the value above current
+        p_wx = np.array([[p_wx_00,p_wx_01],[p_wx_10,p_wx_11]])
+        
+        ## Normalize
+        p_wx = p_wx / p_wx.sum()
+    
+        ## 4. Calculate EFE for this timestep (i.e. expectation of the next timestep)
+        efe = cl.efe_discrete(p=p_wx, q=q, z=z)
+        
+        efe_list.append(efe)
+    
+    ## 5. Plot
+    op.plot_efe_time(timesteps, efe_list)
+
 """
     Agent class
 """
@@ -198,6 +288,8 @@ class Agent():
         self.z_hist = [z]
         
         self.update_attrs()
+        
+        self.dead=False
     
     def update_attrs(self):
         """

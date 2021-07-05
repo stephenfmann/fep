@@ -64,7 +64,10 @@ def vfe_discrete(
     ## 3b. If required, convert to bits
     if units=='b': energy /= np.log(2)
     
-    if debug: logging.info("Energy: "+str(energy))
+    if debug: 
+        msg = F"Energy: {str(energy)}"
+        print(msg) #hack
+        logging.info(msg)
     
     ## 4. Calculate the entropy of q in nats
     entropy = np.sum(q * np.log(1/q)) # element-wise multiplication
@@ -72,7 +75,10 @@ def vfe_discrete(
     ## 4b. If required, convert to bits
     if units=='b': entropy /= np.log(2)
     
-    if debug: logging.info("Entropy: "+str(entropy))
+    if debug: 
+        msg = F"Entropy: {str(entropy)}"
+        print(msg) #hack
+        logging.info(msg)
     
     ## 5. subtract the entropy from the energy
     F = energy - entropy
@@ -378,6 +384,10 @@ def efe_discrete(
         https://stephenmann.isaphilosopher.com/posts/efe/
         
         G = sum_w[ q(w|z) . sum_x[ p(x|w) log(q(w|z)/p(w,x)) ] ]
+        
+        input p is the joint
+        input q is the conditional
+        input z is the index (wrt conditional matrix q) of the z that was performed
     """
     
     ## 1. Assemble q(w|z) using q and z

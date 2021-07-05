@@ -12,6 +12,8 @@ import calc as cl
 def example_2x2_vfe(savefig=True,both=False):
     """
         savefig: (boolean) save the figure to an external PNG file?
+        
+        Figure 2 of Free Energy: A User's Guide.
     
         Imagine a world with two unobservable states w1, w2 and two observable states x1, x2.
         Your system has a generative model p(w,x), an estimate q(w), and can observe x.
@@ -120,7 +122,7 @@ def example_2x2_vfe(savefig=True,both=False):
 def ex_efe_bar(savefig=True):
     """
         Expected free energy on a simple bar chart.
-
+        Figure 4 of Free Energy: A User's Guide.
     """
     
     ## Joint matrix
@@ -640,15 +642,4 @@ def gauss_and_reciprocal(savefig=False):
 
 if __name__=="__main__":
     ex_efe_bar()
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
     
