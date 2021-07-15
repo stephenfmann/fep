@@ -24,7 +24,7 @@ def fig_2():
          in a certain external state.
     '''
     
-    ex.example_2x2_vfe(savefig=False,both=False)
+    ex.example_2x2_vfe(savefig=False)
 
 
 def fig_4():

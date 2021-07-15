@@ -9,9 +9,9 @@ import logging # error reporting
 import calc as cl
 
 
-def example_2x2_vfe(savefig=True,both=False):
+def example_2x2_vfe(savefig=False):
     """
-        savefig: (boolean) save the figure to an external PNG file?
+        savefig: (boolean) save the figure to an external PNG file
         
         Figure 2 of Free Energy: A User's Guide.
     
@@ -25,18 +25,115 @@ def example_2x2_vfe(savefig=True,both=False):
                                what is the distribution of values of w?
                                That is, what is p(w)?
         
-        Break the LEARNING problem into two stages:
-            1. How to update q as a result of observations of x?
-            2. How to update p as a result of the changes in q that took place in stage 1?
+        Here we are just doing INFERENCE.
+        And we are pretending that we cannot calculate p(w|x) directly,
+         but must find an approximation to it: q(w).
         
-        For the first stage, we choose q so that it minimise the function F:
-            F = SUM(q(w)*log(1/p(x,w))) - SUM(q(w)*log(1/q(w)))
+        Q: How to choose q as a result of observations of x?
+        A: Choose the q that minimizes F(p,q,x).
+        
+            F(p,q,x) = SUM(q(w)*log(q(w)/p(w))) + SUM(q(w)*log(1/p(x|w)))
             
-        This example function plots the values of F as a function of the first entry in q,
-         for different inputs x1 and x2.
+        The first term is a penalty for overfitting.
+        The second term is a penalty for failing to explain the data.
+        See https://stephenmann.isaphilosopher.com/posts/fep_expln/ for more.
+            
+        This method plots values of F as a function of the first entry in q.
         Because q only has two values (the estimated probabilities of w1 and w2),
          it is possible to graph F as a function of its first value.
+         Such a graph will contain all the relevant information.
+        
+        We also plot the two component terms of F individually.
+        Call these the 'overfitting penalty' and the 'explaining penalty'.
     """
+    
+    ## 1. Choose the range of values of q to be plotted.
+    q_range = np.arange(0.1,1.,0.01) # q1 ranges from 0.1 to 0.9 at 0.1 increments
+    
+    ## 2. Choose a generative model p(w,x)
+    ##  joint probability of w1 and x1: 0.4
+    ##  joint probability of w1 and x2: 0.2
+    ##  joint probability of w2 and x1: 0.1
+    ##  joint probability of w2 and x2: 0.3
+    ##  the implied marginal distributions are p(w) = (0.6,0.4) and p(x) = (0.5,0.5)
+    p = np.array([[0.4,0.2],[0.1,0.3]])
+    
+    ## 3. Initialise
+    F_0_series = [] # values of F when x=0
+    
+    ## SFM 2021-06-07: plot overfitting penalty (KLD) and explaining penalty
+    p_w = p.sum(axis=1)
+    p_x_w = p.T/p_w
+    p_x_w = p_x_w.T
+    D_0_series = []
+    E_0_series = []
+    
+    F_check_series = [] # confirm F = D+E
+    
+    ## Calculate free energy for various estimates q
+    for q0 in q_range:
+        ## Create the estimated distribution across world states
+        q = np.array([q0,1-q0])
+        
+        F_0 = cl.vfe_discrete(p,q,0) # free energy when x=0; default units are nats
+        
+        F_0_series.append(F_0)
+        
+        D_0_series.append(stats.entropy(q,p_w))
+        
+        ## Penalty-for-explaining sum
+        e_sum = 0
+        i=0
+        for q_value in q:
+            e_sum+=q_value*np.log(1/p_x_w[i,0]) # 0th value of x, ith value of w
+            i+=1
+        E_0_series.append(e_sum)
+        
+        F_check_series.append(stats.entropy(q,p_w)+e_sum)
+    
+    ## 5. Plot
+    
+    ## 5a. Data and data labels
+    fig = plt.figure()
+    
+    ax = plt.axes()
+    ax.plot(q_range,F_0_series,color='k',linestyle='-',label="Variational free energy")
+    
+    ## SFM 2021-06-07: penalties
+    ax.plot(q_range,D_0_series,color='k',linestyle='-.',label="Penalty for overfitting")
+    ax.plot(q_range,E_0_series,color='k',linestyle='--',label="Penalty for failing to explain data")
+    #ax.plot(q_range,F_check_series,label="VFE check")
+    
+    ax.legend()
+    
+    ## 5b. Axis labels
+    plt.xlabel('Degree of belief $q($kitchen$)$')
+    plt.ylabel('Nats')
+    
+    ## 5c. Display plot
+    plt.show()
+    
+    ## 6. Output
+    if savefig:
+        fp = "vfe_fig_1_" + datetime.strftime(datetime.now(),"%Y%m%d-%H%M%S")
+        fig.savefig(fp,dpi=600)
+
+
+def ex_vfe_both(savefig=False):
+    '''
+        Like example_2x2_vfe(), but plots F against q for both values of x.
+        Generates the line graphs in https://stephenmann.isaphilosopher.com/posts/fep/.
+
+    Parameters
+    ----------
+    savefig : boolean, optional
+        DESCRIPTION. Save plot to external PNG file. The default is False.
+
+    Returns
+    -------
+    None.
+
+    '''
     
     ## 1. Choose the range of values of q to be plotted.
     q_range = np.arange(0.1,1.,0.01) # q1 ranges from 0.1 to 0.9 at 0.1 increments
@@ -53,14 +150,6 @@ def example_2x2_vfe(savefig=True,both=False):
     F_0_series = [] # values of F when x=0
     F_1_series = [] # values of F when x=1
     
-    ## SFM 2021-06-07: plot overfitting penalty (KLD) and explaining penalty
-    p_w = p.sum(axis=1)
-    p_x_w = p.T/p_w
-    p_x_w = p_x_w.T
-    D_0_series = []
-    E_0_series = []
-    
-    F_check_series = [] # confirm F = D+E
     
     ## Calculate free energy for various estimates q
     for q0 in q_range:
@@ -72,43 +161,21 @@ def example_2x2_vfe(savefig=True,both=False):
         
         F_0_series.append(F_0)
         F_1_series.append(F_1)
-        
-        D_0_series.append(stats.entropy(q,p_w))
-        
-        ## Penalty-for-explaining sum
-        e_sum = 0
-        i=0
-        for q_value in q:
-            e_sum+=q_value*np.log(1/p_x_w[i,0]) # 0th value of x, ith value of w
-            i+=1
-        E_0_series.append(e_sum)
-        
-        F_check_series.append(stats.entropy(q,p_w)+e_sum)
     
     ## 5. Plot
-    '''
-    plt.plot(q_range,F_0_series,label="free energy when x=meow")
-    plt.plot(q_range,F_1_series,label="free energy when x=purr")
-    plt.legend()
-    '''
     
     ## 5a. Data and data labels
     fig = plt.figure()
     
     ax = plt.axes()
     ax.plot(q_range,F_0_series,color='k',linestyle='-',label="Free energy when $x=$meow")
-    if both: ax.plot(q_range,F_1_series,label="Free energy when $x=$purr")
-    
-    ## SFM 2021-06-07: penalties
-    ax.plot(q_range,D_0_series,color='k',linestyle='-.',label="Penalty for overfitting")
-    ax.plot(q_range,E_0_series,color='k',linestyle='--',label="Penalty for failing to explain data")
-    #ax.plot(q_range,F_check_series,label="VFE check")
+    ax.plot(q_range,F_1_series,label="Free energy when $x=$purr")
     
     ax.legend()
     
     ## 5b. Axis labels
     plt.xlabel('Degree of belief $q($kitchen$)$')
-    plt.ylabel('Free energy')
+    plt.ylabel('Variational free energy (nats)')
     
     ## 5c. Display plot
     plt.show()
@@ -117,9 +184,10 @@ def example_2x2_vfe(savefig=True,both=False):
     if savefig:
         fp = "vfe_fig_1_" + datetime.strftime(datetime.now(),"%Y%m%d-%H%M%S")
         fig.savefig(fp,dpi=600)
+    
+    
 
-
-def ex_efe_bar(savefig=True):
+def ex_efe_bar(savefig=False):
     """
         Expected free energy on a simple bar chart.
         Figure 4 of Free Energy: A User's Guide.
@@ -183,7 +251,7 @@ def ex_efe_bar(savefig=True):
     
     ## 5b. Axis labels
     plt.xlabel('Where you put the cat')
-    plt.ylabel('Expected free energy')
+    plt.ylabel('Nats')
     
     ## 5c. Display plot
     plt.show()
@@ -641,5 +709,5 @@ def gauss_and_reciprocal(savefig=False):
 
 
 if __name__=="__main__":
-    ex_efe_bar()
+    ex_vfe_both()
     
