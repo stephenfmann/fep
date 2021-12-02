@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Jun  9 14:58:41 2021
+Created on Wed Jun 9 14:58:41 2021
 
 @author: ste_m
 
-Investigating the fundamental theorem
+Investigating a fundamental theorem of active inference in simple systems
 
 First of all, we don't yet have an explicit statement of the theorem.
 So we will be trying to refine some intuitive concepts as we go.
@@ -29,7 +29,7 @@ So what we need are:
 
 Start with:
     W = Y = Z = {-1,1}
-    X = {-3,...0,...3}
+    X = {-5,...0,...5}
 
 What we need is: surviving strategies can be cast as minimizing F and G
     AND dying strategies cannot.

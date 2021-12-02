@@ -48,7 +48,7 @@ def example_2x2_vfe(savefig=False):
     """
     
     ## 1. Choose the range of values of q to be plotted.
-    q_range = np.arange(0.1,1.,0.01) # q1 ranges from 0.1 to 0.9 at 0.1 increments
+    q_range = np.arange(0.1,1.,0.01) # q1 ranges from 0.1 to 0.9 at 0.01 increments
     
     ## 2. Choose a generative model p(w,x)
     ##  joint probability of w1 and x1: 0.4

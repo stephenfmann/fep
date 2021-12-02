@@ -16,6 +16,7 @@ import numpy as np
 from scipy import stats,integrate
 from tqdm import tqdm # progress bar
 
+
 def ex1(
         u=2,            # observed light intensity
         σ_u=1,          # variance of light intensity (i.e. the noise)
@@ -53,7 +54,9 @@ def ex1(
     ## Generator function that receives values of v from 0.01 to 5.
     ## Assume light intensity is the square of diameter (see text).
     def p_u_given_v_func(v):
-        return stats.norm(loc=v**2,scale=np.sqrt(σ_u))
+        return stats.norm(loc=v**2,             # mean
+                          scale=np.sqrt(σ_u)    # standard deviation
+                          )
     
     ## 3. Prior distribution over u
     ## Integrate p(u|v).p(v) over the range
@@ -77,6 +80,7 @@ def ex1(
         
         y_axis.append(p_v_given_u)
     
+    ## 5. Plot results
     plt.plot(x_axis,y_axis)
     plt.show()
 
@@ -100,7 +104,6 @@ def ex2(
         Initialize φ = v_p, and then find its values in the next 5 time units 
          (you can use Euler’s method, 
          i.e. update φ(t + delta(t)) = φ(t) + delta(t)∂F/∂φ with delta(t) = 0.01)."
-        
     """
     
     ## 1. Initialise
@@ -129,6 +132,7 @@ def ex2(
     plt.plot(x_axis,y_axis)
     plt.show()
     
+    ## 4. Return best guess for v
     return φ
 
 

@@ -16,13 +16,18 @@ def vfe_discrete(
         debug=False
         ):
     """
-        Calculate variational free energy for discrete distributions.    
-    
-        p: numpy array representing p(w,x), two-dimensional (w along rows, x along columns)
-        q: numpy vector representing q(w), one-dimensional (w as columns)
-        x: integer representing the value of x observed. Corresponds to a column of p.
-        units: [n]ats or [b]its
-        debug: set to True to see verbose output
+        Calculate variational free energy for discrete distributions.
+        
+        State variables:
+            w: hidden state that the system is trying to infer
+            x: observable state that the system can see
+        
+        Inputs:    
+            p: numpy array representing p(w,x), two-dimensional (w along rows, x along columns)
+            q: numpy vector representing q(w), one-dimensional (w as columns)
+            x: integer representing the value of x observed. Corresponds to a column of p.
+            units: [n]ats or [b]its
+            debug: set to True to see verbose output
         
         Variational free energy is a function of three things:
             + a joint distribution p(w,x) treated as a generative model of the 
@@ -32,16 +37,17 @@ def vfe_discrete(
                 the marginal distribution of p(w,x)
             + an observed input value x
     
-        Calculate the variational free energy between p and q.
-        F = Energy                  - Entropy
-          = <log(1/p(x,w))>_q(w)    - <log(1/q(w))>_q(w)
+        Calculate the variational free energy F between p and q.
+        F has various forms (see https://stephenmann.isaphilosopher.com/posts/fep_expln/).
+        The one we're going to use is:
+            F = Energy                  - Entropy
+              = <log(1/p(x,w))>_q(w)    - <log(1/q(w))>_q(w)
         
         For discrete distributions, <.>_q(w) is the sum over values of q(w).
         For continuous distributions, <.>_q(w) would be the integral over values of q(w).
         
         This function is the DISCRETE version.
         See vfe_cont() for the continuous version.
-        
     """
     
     ## 0. Check inputs
@@ -55,7 +61,8 @@ def vfe_discrete(
     p = p / np.sum(p) # joint distribution of w and x
     q = q / np.sum(q) # single distribution of w
     
-    ## 2. Value of x selects a column of p(w,x)
+    ## 2. The observation determines an initial distribution over possible states.
+    ##    The value of x selects a column of p(w,x).
     p_col = p[:,x]
     
     ## 3. Calculate the "energy" in nats
@@ -85,12 +92,6 @@ def vfe_discrete(
     
     return F
 
-"""
-    vfe_cont_2()
-    Calculate variational free energy for continuous distributions
-     using the identity:
-         free energy = energy - entropy.
-"""
 
 def vfe_cont(
         p,
@@ -174,11 +175,6 @@ def vfe_cont(
     
     return F
 
-"""
-    vfe_cont_2()
-    Calculate variational free energy for continuous distributions
-     using the relative entropy.
-"""
 
 def vfe_cont_2(
         p,
@@ -189,7 +185,8 @@ def vfe_cont_2(
         debug=False
         ):
     """
-        Calculate variational free energy for continuous distributions.
+        Calculate variational free energy for continuous distributions
+          using the relative entropy.
         
         p: subclass of scipy.stats.rv_continuous
             representing p(w)
@@ -234,11 +231,11 @@ def vfe_cont_2(
     
     ## 1. Calculate relative entropy from P to Q
     ## NB You have to feed them in the wrong way round,
-    ##     so the distribution that is called P here
-    ##     is called Q in kld_cont(), and vice versa.
-    ##     That's because of the definition of free energy.
-    ##    How to interpret this form of KLD is
-    ##     another matter.
+    ##    so the distribution that is called P here
+    ##    is called Q in kld_cont(), and vice versa.
+    ## That's because of different conventions
+    ##  in the usual presentations of relative entropy
+    ##  and variational free energy.
     kld = kld_cont(q,p,units,debug=debug)
     
     
@@ -272,13 +269,7 @@ def vfe_cont_2(
     
     return F
 
-"""
-    kld_cont()
-    Relative entropy (i.e. Kullback-Leibler divergence)
-     from Q to P for continuous distributions.
-    Note that the order in which the distributions are supplied
-     matters: in general, D(P||Q) != D(Q||P)
-"""
+
 def kld_discrete(p,
              q,
              units='n',
@@ -291,6 +282,9 @@ def kld_discrete(p,
         
         The definition is:
             D(P||Q) = <log(p/q)>_p
+        
+        Note that the order in which the distributions are supplied
+         matters: in general, D(P||Q) != D(Q||P)
         
         Compare: D(Q||P) = <log(q/p)>_q
     """
@@ -314,14 +308,6 @@ def kld_discrete(p,
     return kld
     
 
-
-"""
-    kld_cont()
-    Relative entropy (i.e. Kullback-Leibler divergence)
-     from Q to P for continuous distributions.
-    Note that the order in which the distributions are supplied
-     matters: in general, D(P||Q) != D(Q||P)
-"""
 def kld_cont(p,
              q,
              units='n',
@@ -329,6 +315,11 @@ def kld_cont(p,
              debug=False
              ):
     """
+        Relative entropy (i.e. Kullback-Leibler divergence)
+         from Q to P for continuous distributions.
+        Note that the order in which the distributions are supplied
+         matters: in general, D(P||Q) != D(Q||P)
+    
         p: subclass of scipy.stats.rv_continuous
         q: subclass of scipy.stats.rv_continuous
         units: [n]ats or [b]its
@@ -504,9 +495,5 @@ def get_p_wx_from_agent(agent):
             
     
     return p_wx / p_wx.sum()
-    
-    
-    
-    
     
     
