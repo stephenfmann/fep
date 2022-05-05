@@ -426,6 +426,52 @@ def efe_discrete(
     return total
 
 
+def efe_surprise_penalty_discrete(
+        p_x_given_w,
+        q_w
+        ):
+    """
+    Calculate the surprise penalty component of expected free energy.
+    
+    SUM_w(q(w) . SUM_X(p(x|w).log(1/p(x|w))))
+
+    Parameters
+    ----------
+    p_x_given_w : numpy array
+        Conditional probability of x given w.
+        A 2D array.
+    q_w : numpy array
+        Conditional probability of w.
+        A 2D array.
+
+    Returns
+    -------
+    surprise_penalty : float.
+        The surprise penalty in nats.
+
+    """
+    
+    i = 0
+    total = 0
+    for w in q_w:
+        
+        ## The p we are given is a conditional matrix p(x|w)
+        ## We want a row of that matrix corresponding to
+        ##  the w we are assuming has occurred
+        p_x = p_x_given_w[i]
+        
+        inner_sum = 0
+        for x in p_x:
+            
+            inner_sum += x*np.log(1/x)
+        
+        total += w*inner_sum
+        
+        i+=1
+    
+    
+    return total
+
 def cond_ent(p,q):
     """
         Conditional entropy weighted by q rather than p.
