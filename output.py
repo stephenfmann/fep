@@ -2,7 +2,7 @@
 """
 Created on Wed Jun  9 16:41:50 2021
 
-@author: ste_m
+Plotting and output functions for FEP module.
 """
 
 import matplotlib.pyplot as plt
@@ -13,7 +13,8 @@ from datetime import datetime
 def plot_vfe(q_range,
              Fseries=[], # list of lists
              xlabel='First component of degree of belief $q$',
-             savefig=False):
+             savefig=False,
+             range_of_states=0):
     
     fig = plt.figure()
     
@@ -39,7 +40,8 @@ def plot_vfe(q_range,
     
     ## 6. Output
     if savefig:
-        fp = "vfe_fig_1_" + datetime.strftime(datetime.now(),"%Y%m%d-%H%M%S")
+        fp = "out/vfe_fig_1_" + datetime.strftime(datetime.now(),"%Y%m%d-%H%M%S")
+        if range_of_states>0: fp+=f'_{range_of_states}'
         fig.savefig(fp,dpi=600)
 
 def plot_efe_time(timesteps,

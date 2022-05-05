@@ -2,8 +2,6 @@
 """
 Created on Wed Jun 9 14:58:41 2021
 
-@author: ste_m
-
 Investigating a fundamental theorem of active inference in simple systems
 
 First of all, we don't yet have an explicit statement of the theorem.
@@ -29,7 +27,7 @@ So what we need are:
 
 Start with:
     W = Y = Z = {-1,1}
-    X = {-5,...0,...5}
+    X = {-3,...0,...3}
 
 What we need is: surviving strategies can be cast as minimizing F and G
     AND dying strategies cannot.
@@ -61,7 +59,18 @@ DEATH_CONDITIONS = [
 ## Default prob dist is conceptually equivalent to a preference distribution.
 ## You most want X=0 because that is furthest from death condition.
 ## Rows are w, columns are x
-P_WX_DEFAULT = np.array([
+
+P_WX_DEFAULT_3 = np.array([
+    [0.,0.05,0.1,0.2,0.1,0.05,0.],
+    [0.,0.05,0.1,0.2,0.1,0.05,0.]
+    ])
+
+P_WX_DEFAULT_4 = np.array([
+    [0.,0.025,0.05,0.075,0.2,0.075,0.05,0.025,0.],
+    [0.,0.025,0.05,0.075,0.2,0.075,0.05,0.025,0.]
+    ])
+
+P_WX_DEFAULT_5 = np.array([
     [0,0.01,0.02,0.06,0.1,0.12,0.1,0.06,0.02,0.01,0],
     [0,0.01,0.02,0.06,0.1,0.12,0.1,0.06,0.02,0.01,0]
     ])
@@ -70,13 +79,13 @@ P_WX_DEFAULT = np.array([
 EPS = 0.001
 
 
-def check_death(agent):
+def check_death(agent,range_of_states):
     """
         Checks whether the agent's states meet the death condition
     """
     
     #print(f"Agent value of x: {agent.x}") # debug
-    if agent.x>=5 or agent.x<=-5:return True
+    if (agent.x >= range_of_states) or (agent.x <= -1*range_of_states):return True
     return False
     
     """
@@ -102,7 +111,8 @@ def die(agent):
     #print(agent.z)
 
 def run(
-        t=100   # timesteps
+        t=100,   # timesteps
+        range_of_states=4
         ):
     """
         Main method
@@ -133,7 +143,7 @@ def run(
         i=0
         for agent in agents:
             if agent.dead:continue
-            if check_death(agent):
+            if check_death(agent,range_of_states):
                 die(agent)
                 #return agent # test
                 #agents.pop(i) # lose the info
@@ -156,53 +166,53 @@ def do_agent(agent):
     return agent
 
 
-def ex_vfe(agent,savefig=False):
-    """
-        To figure out if the agent is complying with variational inference
-         we need to get its historical frequency distribution.
-    """
+# def ex_vfe(agent,savefig=False):
+#     """
+#         To figure out if the agent is complying with variational inference
+#          we need to get its historical frequency distribution.
+#     """
     
-    ## Set p and q
-    p_wx = cl.get_p_wx_from_agent(agent)
-    q_range = np.arange(0.1,1.,0.01) # q1 ranges from 0.1 to 0.9 at 0.1 increments
+#     ## Set p and q
+#     p_wx = cl.get_p_wx_from_agent(agent)
+#     q_range = np.arange(0.1,1.,0.01) # q1 ranges from 0.1 to 0.9 at 0.1 increments
     
-    ## Initialise
-    F_0_series = [] # values of F when x=-1
-    F_1_series = [] # values of F when x=0
-    F_2_series = [] # values of F when x=1
-    F_3_series = [] # values of F when x=2
+#     ## Initialise
+#     F_0_series = [] # values of F when x=-1
+#     F_1_series = [] # values of F when x=0
+#     F_2_series = [] # values of F when x=1
+#     F_3_series = [] # values of F when x=2
     
-    for q0 in q_range:
-        ## Create the estimated distribution across world states
-        q = np.array([q0,1-q0])
+#     for q0 in q_range:
+#         ## Create the estimated distribution across world states
+#         q = np.array([q0,1-q0])
         
-        ## Get free energy for each different possible input
-        F_0 = cl.vfe_discrete(p_wx,q,0) # free energy when x=-1
-        F_1 = cl.vfe_discrete(p_wx,q,1) # free energy when x=0
-        F_2 = cl.vfe_discrete(p_wx,q,2) # free energy when x=1
-        F_3 = cl.vfe_discrete(p_wx,q,3) # free energy when x=2
+#         ## Get free energy for each different possible input
+#         F_0 = cl.vfe_discrete(p_wx,q,0) # free energy when x=-1
+#         F_1 = cl.vfe_discrete(p_wx,q,1) # free energy when x=0
+#         F_2 = cl.vfe_discrete(p_wx,q,2) # free energy when x=1
+#         F_3 = cl.vfe_discrete(p_wx,q,3) # free energy when x=2
         
-        F_0_series.append(F_0)
-        F_1_series.append(F_1)
-        F_2_series.append(F_2)
-        F_3_series.append(F_3)
+#         F_0_series.append(F_0)
+#         F_1_series.append(F_1)
+#         F_2_series.append(F_2)
+#         F_3_series.append(F_3)
     
-    ## List [data,label]
-    series = [[F_0_series,"free energy when x=-1"],
-              [F_1_series,"free energy when x=0"],
-              [F_2_series,"free energy when x=1"],
-              [F_3_series,"free energy when x=2"]]
+#     ## List [data,label]
+#     series = [[F_0_series,"free energy when x=-1"],
+#               [F_1_series,"free energy when x=0"],
+#               [F_2_series,"free energy when x=1"],
+#               [F_3_series,"free energy when x=2"]]
     
-    op.plot_vfe(q_range,series,savefig)
+#     op.plot_vfe(q_range,series,savefig)
 
 
-def ex_vfe_time(agent,savefig=False):
+def ex_vfe_time(agent,range_of_states=3,savefig=False):
     """
         Plot variational free energy of agent over time.
         Figures 5 and 6 of Free Energy: A User's Guide.
     """
     
-    p_wx = P_WX_DEFAULT
+    p_wx = eval(f'P_WX_DEFAULT_{range_of_states}')
     timesteps = range(len(agent.w_hist)) # number of timesteps
     
     vfe_list = []
@@ -214,7 +224,9 @@ def ex_vfe_time(agent,savefig=False):
         if agent.y_hist[t] == -1: # assume w=-1
             q = np.array([1-EPS,EPS])
         
-        vfe = cl.vfe_discrete(p_wx,q,agent.x_hist[t]+5) # shift by 5 because of order of x in p_wx
+        ## Shift by <range_of_states> because the first value of X is e.g. -3
+        ##  and this is indexed by 0 in the array.
+        vfe = cl.vfe_discrete(p_wx,q,agent.x_hist[t]+range_of_states) 
         #if vfe > 10: 
             ## debug
             #print(p_wx)
@@ -224,51 +236,56 @@ def ex_vfe_time(agent,savefig=False):
             #return
         vfe_list.append(vfe)
     
-    series = [[vfe_list,"F when agent acts randomly"]]
+    label = "F when agent is smart" if agent.strategy == "smart" else "F when agent acts randomly"
+    series = [[vfe_list,label]]
     
     ## Plot
-    op.plot_vfe(timesteps,series,xlabel='Timestep',savefig=savefig)
+    op.plot_vfe(timesteps,
+                series,
+                xlabel='Timestep',
+                savefig=savefig,
+                range_of_states=range_of_states)
     
     return vfe_list
 
 
-def ex_efe_time(agent,savefig=False):
-    """
-        Expected free energy at each timestep
-    """
+# def ex_efe_time(agent,savefig=False):
+#     """
+#         Expected free energy at each timestep
+#     """
     
-    ## 1. Get q(w|z)
-    ## Rows are z, columns are w
-    q = np.array([[0.95,0.05],[0.05,0.95]])
+#     ## 1. Get q(w|z)
+#     ## Rows are z, columns are w
+#     q = np.array([[0.95,0.05],[0.05,0.95]])
     
-    timesteps = range(len(agent.z_hist)) # number of timesteps
+#     timesteps = range(len(agent.z_hist)) # number of timesteps
     
-    efe_list = []
+#     efe_list = []
     
-    for t in timesteps:
-        ## 2. Get current z
-        z = agent.z_hist[t]
+#     for t in timesteps:
+#         ## 2. Get current z
+#         z = agent.z_hist[t]
     
-        ## 3. Get current p(w,x) from P_WX_DEFAULT
-        ## The possible values of w are (-1, 1)
-        ## The possible values of x are one step below and one step above the current value
-        x = agent.x_hist[t] # current value of x
-        p_wx_00 = P_WX_DEFAULT[0][x+5-1] # plus 5 for index, -1 for the value below current
-        p_wx_01 = P_WX_DEFAULT[0][x+5+1] # plus 5 for index, +1 for the value above current
-        p_wx_10 = P_WX_DEFAULT[1][x+5-1] # plus 5 for index, -1 for the value below current
-        p_wx_11 = P_WX_DEFAULT[1][x+5+1] # plus 5 for index, +1 for the value above current
-        p_wx = np.array([[p_wx_00,p_wx_01],[p_wx_10,p_wx_11]])
+#         ## 3. Get current p(w,x) from P_WX_DEFAULT
+#         ## The possible values of w are (-1, 1)
+#         ## The possible values of x are one step below and one step above the current value
+#         x = agent.x_hist[t] # current value of x
+#         p_wx_00 = P_WX_DEFAULT[0][x+5-1] # plus 5 for index, -1 for the value below current
+#         p_wx_01 = P_WX_DEFAULT[0][x+5+1] # plus 5 for index, +1 for the value above current
+#         p_wx_10 = P_WX_DEFAULT[1][x+5-1] # plus 5 for index, -1 for the value below current
+#         p_wx_11 = P_WX_DEFAULT[1][x+5+1] # plus 5 for index, +1 for the value above current
+#         p_wx = np.array([[p_wx_00,p_wx_01],[p_wx_10,p_wx_11]])
         
-        ## Normalize
-        p_wx = p_wx / p_wx.sum()
+#         ## Normalize
+#         p_wx = p_wx / p_wx.sum()
     
-        ## 4. Calculate EFE for this timestep (i.e. expectation of the next timestep)
-        efe = cl.efe_discrete(p=p_wx, q=q, z=z)
+#         ## 4. Calculate EFE for this timestep (i.e. expectation of the next timestep)
+#         efe = cl.efe_discrete(p=p_wx, q=q, z=z)
         
-        efe_list.append(efe)
+#         efe_list.append(efe)
     
-    ## 5. Plot
-    op.plot_efe_time(timesteps, efe_list)
+#     ## 5. Plot
+#     op.plot_efe_time(timesteps, efe_list)
 
 """
     Agent class
@@ -314,7 +331,8 @@ class Agent():
         
         ## input state will be increased if external state is 1,
         ##  will be decreased if external state is -1        
-        delta = np.random.choice([self.states[0],0],p=[0.95,0.05])
+        # delta = np.random.choice([self.states[0],0],p=[0.95,0.05])
+        delta = self.states[0]
         
         self.states[1]+=delta
         

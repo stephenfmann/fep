@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+"""
+Basic examples of free energy calculations.
+"""
 
 import numpy as np
 from scipy import stats,integrate

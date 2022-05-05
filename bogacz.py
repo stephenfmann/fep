@@ -2,8 +2,6 @@
 """
 Created on Tue Apr 21 19:30:37 2020
 
-@author: Ste
-
 Exercises and concepts from Bogacz (2017): A tutorial on the free-energy framework
  for modelling perception and learning. 
  https://www.sciencedirect.com/science/article/pii/S0022249615000759

@@ -2,8 +2,6 @@
 """
 Created on Tue May 25 16:29:31 2021
 
-@author: ste_m
-
 Utility functions for FEP module.
 
 """

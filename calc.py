@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+"""
+Calculating specific values relating to free energy.
+"""
 
 import numpy as np
 from scipy.integrate import quad #integrate over continuous distribution
