@@ -7,5 +7,5 @@ Models, calculations and examples relating to the **free energy principle** and 
 + **examples.py**: Methods relating to the free energy principle for inference and action.
 + **output.py**: Methods for plotting.
 + **selection.py**: Methods relating to the free energy principle for selection.
-+ **users_guide.py**: Generate the figures that appear in the preprint [Free Energy: A User's Guide](https://philpapers.org/rec/MANFEA-2).
++ **users_guide.py**: Generate the figures that appear in the paper [Free Energy: A User's Guide](https://link.springer.com/article/10.1007/s10539-022-09864-z).
 + **util.py**: Useful methods.
